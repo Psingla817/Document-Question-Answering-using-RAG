@@ -176,4 +176,128 @@ with st.sidebar:
 # ---------------------------------------------------
 
 chat_container = st.container()
+
+# ---------------------------------------------------
+# Process Uploaded PDF
+# ---------------------------------------------------
+
+if uploaded_file is not None:
+
+    if uploaded_file.name != st.session_state.current_file:
+
+        st.session_state.current_file = uploaded_file.name
+        st.session_state.messages = []
+
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".pdf"
+        ) as temp_pdf:
+
+            temp_pdf.write(uploaded_file.getvalue())
+            pdf_path = temp_pdf.name
+
+        with st.spinner("📖 Processing document..."):
+
+            retriever = create_retriever(pdf_path)
+
+        st.session_state.retriever = retriever
+        st.session_state.document_ready = True
+
+        os.remove(pdf_path)
+
+        st.success("✅ Document indexed successfully!")
+
+
+
+# ---------------------------------------------------
+# Clear Chat
+# ---------------------------------------------------
+
+if clear_chat:
+
+    st.session_state.messages = []
+
+    st.rerun()
+
+
+
+# ---------------------------------------------------
+# Upload Another PDF
+# ---------------------------------------------------
+
+if upload_new:
+
+    st.session_state.messages = []
+    st.session_state.retriever = None
+    st.session_state.current_file = None
+    st.session_state.document_ready = False
+
+    st.rerun()
+
+
+
+# ---------------------------------------------------
+# Chat Interface
+# ---------------------------------------------------
+
+with chat_container:
+
+    if not st.session_state.document_ready:
+
+        st.info("📄 Upload a PDF from the sidebar to start chatting.")
+
+    else:
+
+        st.success("🟢 Document Ready")
+
+        st.markdown("---")
+
+        # Display Previous Conversation
+
+        for message in st.session_state.messages:
+
+            with st.chat_message(message["role"]):
+
+                st.markdown(message["content"])
+
+        # Chat Input
+
+        question = st.chat_input(
+            "Ask anything about your document..."
+        )
+
+        if question:
+
+            # User Message
+
+            st.session_state.messages.append(
+                {
+                    "role": "user",
+                    "content": question
+                }
+            )
+
+            with st.chat_message("user"):
+
+                st.markdown(question)
+
+            # Assistant Response
+
+            with st.chat_message("assistant"):
+
+                with st.spinner("Thinking..."):
+
+                    answer = ask_question(
+                        st.session_state.retriever,
+                        question
+                    )
+
+                    st.markdown(answer)
+
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": answer
+                }
+            )
         
