@@ -6,18 +6,21 @@ import streamlit as st
 from main import create_retriever, ask_question
 
 
+# ---------------------------------------------------
+# Page Configuration
+# ---------------------------------------------------
+
 st.set_page_config(
-    page_title="Book RAG Assistant",
+    page_title="Document Question Answering using RAG",
     page_icon="📚",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.title("📚 Book Question Answering System")
-st.write("Upload a PDF and ask questions about it.")
 
-# -------------------------
+# ---------------------------------------------------
 # Session State
-# -------------------------
+# ---------------------------------------------------
 
 if "retriever" not in st.session_state:
     st.session_state.retriever = None
@@ -28,104 +31,149 @@ if "messages" not in st.session_state:
 if "current_file" not in st.session_state:
     st.session_state.current_file = None
 
+if "document_ready" not in st.session_state:
+    st.session_state.document_ready = False
 
-# -------------------------
-# Upload PDF
-# -------------------------
 
-uploaded_file = st.file_uploader(
-    "Upload your PDF",
-    type=["pdf"]
+# ---------------------------------------------------
+# Custom CSS
+# ---------------------------------------------------
+
+st.markdown(
+    """
+<style>
+
+.main{
+    padding-top:20px;
+}
+
+.block-container{
+    padding-top:2rem;
+    padding-left:3rem;
+    padding-right:3rem;
+}
+
+.title{
+    text-align:center;
+    font-size:48px;
+    font-weight:700;
+    color:#1E3A8A;
+}
+
+.subtitle{
+    text-align:center;
+    font-size:18px;
+    color:gray;
+    margin-bottom:30px;
+}
+
+.info-card{
+    background:#f8f9fa;
+    padding:18px;
+    border-radius:12px;
+    border:1px solid #e6e6e6;
+}
+
+.status{
+    color:green;
+    font-weight:bold;
+}
+
+hr{
+    margin-top:25px;
+    margin-bottom:25px;
+}
+
+</style>
+""",
+    unsafe_allow_html=True,
 )
 
 
-if uploaded_file is not None:
+# ---------------------------------------------------
+# Header
+# ---------------------------------------------------
 
-    # Only process if it's a NEW file
-    if uploaded_file.name != st.session_state.current_file:
+st.markdown(
+    """
+<div class="title">
+📚 Document Question Answering using RAG
+</div>
 
-        st.session_state.current_file = uploaded_file.name
-
-        # Clear previous chat
-        st.session_state.messages = []
-
-        with tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix=".pdf"
-        ) as temp_pdf:
-
-            temp_pdf.write(uploaded_file.getvalue())
-            pdf_path = temp_pdf.name
-
-        with st.spinner("Processing document..."):
-
-            retriever = create_retriever(pdf_path)
-
-        st.session_state.retriever = retriever
-
-        os.remove(pdf_path)
-
-        st.success("Document processed successfully!")
+<div class="subtitle">
+Upload any PDF and ask questions about its contents using Retrieval-Augmented Generation.
+</div>
+""",
+    unsafe_allow_html=True,
+)
 
 
+# ---------------------------------------------------
+# Sidebar
+# ---------------------------------------------------
 
-# -------------------------
-# Display Chat
-# -------------------------
+with st.sidebar:
 
-for message in st.session_state.messages:
+    st.title("📂 Document")
 
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-
-
-# -------------------------
-# Chat Input
-# -------------------------
-
-if st.session_state.retriever is not None:
-
-    question = st.chat_input(
-        "Ask anything about your document..."
+    uploaded_file = st.file_uploader(
+        "Upload PDF",
+        type=["pdf"]
     )
 
-    if question:
+    st.divider()
 
-        # Display User Message
+    if uploaded_file is None:
 
-        st.session_state.messages.append(
-            {
-                "role": "user",
-                "content": question
-            }
+        st.info("Upload a PDF to begin.")
+
+    else:
+
+        size = uploaded_file.size / (1024 * 1024)
+
+        st.markdown("### 📄 Uploaded Document")
+
+        st.markdown(
+            f"""
+<div class="info-card">
+
+**Name**
+
+{uploaded_file.name}
+
+<br>
+
+**Size**
+
+{size:.2f} MB
+
+<br>
+
+**Status**
+
+<span class="status">Ready for Processing</span>
+
+</div>
+""",
+            unsafe_allow_html=True,
         )
 
-        with st.chat_message("user"):
-            st.markdown(question)
+    st.divider()
 
-        # Generate Answer
+    clear_chat = st.button(
+        "🗑 Clear Chat",
+        use_container_width=True
+    )
 
-        with st.spinner("Thinking..."):
+    upload_new = st.button(
+        "🔄 Upload Another PDF",
+        use_container_width=True
+    )
 
-            answer = ask_question(
-                st.session_state.retriever,
-                question
-            )
 
-        # Display Assistant Message
+# ---------------------------------------------------
+# Main Area Placeholder
+# ---------------------------------------------------
 
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": answer
-            }
-        )
-
-        with st.chat_message("assistant"):
-            st.markdown(answer)
-
-else:
-
-    st.info("Upload a PDF to begin.")
+chat_container = st.container()
         
